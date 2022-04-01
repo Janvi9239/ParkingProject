@@ -1,0 +1,205 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <script src="Scripts/jquery-3.5.1.min.js"></script>
+    <script src="https://unpkg.com/sweetalert/dist/sweetalert.min.js"></script>
+    <meta charset="utf-8" />
+    <style>
+        form.pop-up {
+            display: none;
+            position: sticky;
+            padding-top: 30px;
+            bottom: 0;
+            right: 15px;
+            border: 3px solid #f1f1f1;
+            z-index: 9;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1;
+            padding-top: 100px;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgb(0,0,0);
+            background-color: rgba(0,0,0,0.4);
+        }
+
+        .modal-content {
+            background-color: #fefefe;
+            margin: auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 80%;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="text-center">
+        <h1 style="display: flex; justify-content: space-around; font-size:40px;">Flash Parking</h1>
+    </div>
+    <br /><br /><br /><br /><br />
+    <div style="display: flex; justify-content: space-around;">
+        <div>
+            <label for="location"><b>Choose a location:</b></label>
+
+            <select style="height: 40px; width: 200px;" name="location" id="location">
+                <option value="level1">Level 1</option>
+                <option value="level2">Level 2</option>
+                <option value="level3">Level 3</option>
+                <option value="level4">Level 4</option>
+            </select>
+        </div>
+        <div><button style="height:40px; width:200px;" onclick="searchLocation()"><b>Get Available Spots</b></button></div>
+        <div><button style="height:40px; width:200px;" onclick="openform()"><b>Add Car To Location</b></button></div>
+        <div><button style="height:40px; width:200px;" onclick="carDetails()"><b>Remove Car From Location</b></button></div>
+    </div>
+    <div>
+        <form class="pop-up" id="fillForm">
+            <fieldset>
+                <legend>Please Enter The Car Details</legend>
+                <label for="LicenseNumber">License Number:</label><br>
+                <input id="lNumber" type="text" placeholder="Enter License Number" name="LicenseNumber"><br>
+                <p style="margin-bottom:0;">Is Car Compact?</p>
+                <input type="radio" name="carType" value="true" checked>Yes<br>
+                <input type="radio" name="carType" value="false">No<br>
+                <br /><br />
+                <input type="button" id="submit" onclick="addCar()" value="Submit" />
+                <input type="button" id="close" onclick="closeForm()" value="Close">
+            </fieldset>
+        </form>
+    </div>
+    <div id="myModal" class="modal">
+        <div class="modal-content">
+            <div style="display: flex">
+                <p>Regular Spots Available &nbsp; - &nbsp;&nbsp;</p>
+                <p id="regularSpots"></p>
+            </div>
+            <div style="display: flex">
+                <p>Compact Spots Available &nbsp; - &nbsp;&nbsp;</p>
+                <p id="compactSpots"></p>
+            </div>
+            <div style="display: flex">
+                <p>Total Spots Available &nbsp;  - &nbsp;&nbsp;</p>
+                <p id="totalSpots"></p>
+            </div>
+            <button onclick="closePopUp()"><b>Close</b></button>
+        </div>
+    </div>
+    <div>
+        <form class="pop-up" id="removeCar">
+            <fieldset>
+                <legend>Please Enter The Car Details</legend>
+                <label for="LicenseNumber">License Number:</label><br>
+                <input id="removeLicense" type="text" placeholder="Enter License Number" name="LicenseNumber"><br>
+                <br /><br />
+                <input type="button" id="submitForm" onclick="removeCar()" value="Submit" />
+                <input type="button" id="closeForm" onclick="closeCarDetails()" value="Close">
+            </fieldset>
+        </form>
+    </div>
+
+    <script type="text/javascript">
+        function closePopUp() {
+            document.getElementById("myModal").style.display = "none";
+        }
+        function openform() {
+            document.getElementById("fillForm").style.display = 'block';
+        }
+        function closeForm() {
+            document.getElementById("fillForm").style.display = "none";
+        }
+        function carDetails() {
+            document.getElementById("removeCar").style.display = 'block';
+        }
+        function closeCarDetails() {
+            document.getElementById("removeCar").style.display = "none";
+        }
+        function searchLocation() {
+            $.ajax({
+                type: "GET",
+                dataType: "json",
+                url: "api/Location/GetAvailabilityAtLocation",
+                data: {
+                    location: $("#location").val()
+                },
+                success: function (result) {
+                    JSON.parse(JSON.stringify(result));
+                    if (result != null) {
+                        $('#regularSpots').html(result["RegularSpots"]);
+                        $('#compactSpots').html(result["CompactSpots"]);
+                        $('#totalSpots').html(result["TotalSpots"]);
+                        document.getElementById("myModal").style.display = "block";
+                    }
+                    else {
+                        swal({ icon: 'error', title: 'Oops...', text: 'Unable to get parking spots for this location' })
+                    }
+                    console.info(result);
+                }
+            });
+        }
+        function addCar() {
+            var carModel = new Object();
+            carModel.LicenseNumber = $("#lNumber").val(),
+                carModel.IsCompact = $("input[name='carType']:checked").val(),
+                carModel.LocationName = $("#location").val()
+            if (carModel.LicenseNumber == "") {
+                alert("Please fill in data before submitting");
+                return false;
+            } else {
+                $.ajax({
+                    url: 'api/Car/',
+                    type: 'POST',
+                    dataType: 'json',
+                    data: carModel,
+                    success: function (data, textStatus, xhr) {
+                        swal({ icon: 'success', title: 'Parking Available', text: 'Car - ' + $("#lNumber").val() + 'parked at the location - ' + $("#location").val() });
+                        setTimeout(function () {
+                            location.reload();
+                        }, 10000);
+                    },
+                    error: function (xhr, textStatus, errorThrown) {
+                        swal({ icon: 'error', title: 'Parking Unavailable', text: 'Sorry, Unable to park at the location - ' + $("#location").val() });
+                        setTimeout(function () {
+                            location.reload();
+                        }, 10000);
+                    }
+                });
+            }
+        }
+        function removeCar() {
+            var parkingSpot = new Object();
+            parkingSpot.SpotId = $('#removeLicense').val();
+            if (parkingSpot.SpotId == "") {
+                alert("Please fill in data before submitting");
+                return false;
+            } else {
+                $.ajax({
+                    url: 'api/Parking/',
+                    type: 'DELETE',
+                    dataType: 'json',
+                    data: parkingSpot,
+                    success: function (data, textStatus, xhr) {
+                        swal({ icon: 'success', title: 'Parking-Spot Now Available', text: 'Car removed from the location' });
+                        setTimeout(function () {
+                            location.reload();
+                        }, 10000);
+                    },
+                    error: function (xhr, textStatus, errorThrown) {
+                        swal({ icon: 'error', title: 'Error', text: 'Error occured while performing the action. Please try later ' });
+                        setTimeout(function () {
+                            location.reload();
+                        }, 10000);
+                    }
+                });
+            }
+        }
+    </script>
+</body>
+</html>
